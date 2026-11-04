@@ -94,6 +94,24 @@ Para realizar la evaluación se ha utilizado `llama3.1:8b` como modelo juez, con
 
 Se han realizado tres pruebas con distintas preguntas para comparar el comportamiento del RAG original con el sistema mejorado mediante el reranker BGE (`BAAI/bge-reranker-v2-m3`).
 
+### Evidencias de ejecución de las últimas evaluaciones
+
+Se incluyen capturas de las ejecuciones realizadas para comprobar
+el comportamiento del RAG original y del RAG con reranker BGE:
+
+- Prueba 15 – Rotura de lunas:
+  - `15_faithfulness_linea_directa 1`
+  - `15_faithfulness_linea_directa2`
+
+- Prueba 16 – Gastos de remolcaje:
+  - `16_faithfulness_remolcaje 1`
+  - `16_faithfulness_remolcaje2`
+
+Las capturas muestran la recuperación de fragmentos, las respuestas
+generadas por ambos sistemas y los resultados de la evaluación RAGAS.
+Los resultados detallados también se conservan en los archivos CSV
+correspondientes dentro de `documentacion/`.
+
 ### Primera evaluación: garantía de lunas de Gesauto
 
 **Pregunta:** ¿Qué cubre la garantía de lunas?
