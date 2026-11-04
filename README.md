@@ -88,11 +88,13 @@ La comparación muestra que el reranker puede modificar la prioridad de los frag
 
 ### 7. Evaluación de Faithfulness con RAGAS
 
-Se ha utilizado la métrica Faithfulness de RAGAS para comprobar si las afirmaciones de las respuestas están respaldadas por el contexto recuperado.
+Se ha utilizado la métrica **Faithfulness de RAGAS** para comprobar si las afirmaciones de las respuestas generadas están respaldadas por la información contenida en los fragmentos recuperados.
 
-La evaluación utiliza `llama3.1:8b` como modelo juez, con temperatura 0.
+Para realizar la evaluación se ha utilizado `llama3.1:8b` como modelo juez, con temperatura 0.
 
-#### Primera pregunta
+Se han realizado tres pruebas con distintas preguntas para comparar el comportamiento del RAG original con el sistema mejorado mediante el reranker BGE (`BAAI/bge-reranker-v2-m3`).
+
+### Primera evaluación: garantía de lunas de Gesauto
 
 **Pregunta:** ¿Qué cubre la garantía de lunas?
 
@@ -106,9 +108,9 @@ La garantía de lunas cubre la reparación, la reposición y los gastos de coloc
 
 La respuesta cita el documento `gesauto_condiciones_modelo_2020.pdf`, página 41.
 
-En esta prueba, el RAG original obtuvo una puntuación de Faithfulness superior a la versión con BGE.
+En esta prueba, el RAG original obtuvo una puntuación de Faithfulness superior a la versión con BGE. Por tanto, el reranking no mejoró el resultado.
 
-#### Segunda pregunta
+### Segunda evaluación: rotura de lunas de Línea Directa
 
 **Pregunta:** ¿Qué elementos cubre Línea Directa en la garantía de rotura de lunas?
 
@@ -117,9 +119,37 @@ En esta prueba, el RAG original obtuvo una puntuación de Faithfulness superior 
 | Faithfulness | 0,00 | 0,00 |
 | Respuesta | No lo sé. | No lo sé. |
 
-En esta evaluación, los contextos recuperados no contenían información suficiente para responder a la pregunta. Ambas versiones activaron el mecanismo de fallback.
+Para esta prueba se limitaron las búsquedas a los dos documentos de Línea Directa.
+
+Los contextos recuperados no proporcionaron información suficiente para generar una respuesta fundamentada. Ambas versiones activaron el mecanismo de fallback y respondieron «No lo sé.».
 
 Este resultado muestra que el reranking no siempre consigue resolver las limitaciones de la recuperación inicial.
+
+### Tercera evaluación: gastos de remolcaje de Línea Directa
+
+**Pregunta:** ¿Qué gastos de remolcaje cubre Línea Directa en España en caso de rotura de lunas?
+
+| Resultado | RAG original | RAG con BGE |
+|---|---:|---:|
+| Faithfulness | 1,00 | 1,00 |
+
+Ambas versiones recuperaron el fragmento relevante de la página 5 del documento `linea_directa_coberturas_complementarias.pdf`.
+
+Las dos generaron respuestas correctas, indicando que Línea Directa cubre los gastos de remolque hasta el taller oficial de la marca más próximo o hasta el taller elegido por el asegurado, siempre que este último se encuentre a la misma distancia o a una inferior.
+
+En esta prueba, ambos sistemas obtuvieron la máxima puntuación de Faithfulness. El reranker BGE no produjo una mejora adicional porque el RAG original ya había recuperado correctamente la información.
+
+### Conclusiones de la evaluación
+
+Los resultados de las tres pruebas muestran que el reranking con BGE puede modificar la selección de fragmentos y que su utilidad depende de la consulta realizada.
+
+- En la primera evaluación, el RAG original obtuvo un resultado superior al sistema con BGE.
+- En la segunda, ambos sistemas tuvieron dificultades para recuperar información suficiente y activaron el fallback.
+- En la tercera, ambos sistemas recuperaron el contexto adecuado y obtuvieron una puntuación máxima de Faithfulness.
+
+Por tanto, no se puede concluir que BGE mejore todas las respuestas. Su incorporación permite experimentar con una recuperación más selectiva, pero no garantiza una mejora en todas las consultas.
+
+Las evaluaciones detalladas y sus resultados se conservan en la carpeta `documentacion/` del proyecto.
 
 ### 8. Mecanismo de fallback
 
@@ -165,31 +195,38 @@ Los principales componentes utilizados son:
 | `documentacion/` | Capturas, resultados y evidencias de evaluación. |
 | `docs/` | Documentos PDF utilizados por el RAG. |
 
-### 11. Resultados y conclusiones
+## 11. Resultados y conclusiones
 
 La incorporación de BGE permite añadir una etapa de clasificación de relevancia después de la recuperación inicial.
 
 Las pruebas realizadas demuestran que:
 
 - El reranker funciona y modifica el orden de los fragmentos recuperados.
-- Puede situar en primera posición fragmentos más relacionados con la pregunta.
+- Puede situar en posiciones prioritarias fragmentos más relacionados con la pregunta.
 - No garantiza que toda la información necesaria esté incluida entre los cuatro fragmentos seleccionados.
 - La fragmentación de los documentos puede separar información que pertenece a un mismo artículo o cobertura.
-- La evaluación de Faithfulness permite detectar diferencias entre las respuestas generadas por ambas versiones.
+- La evaluación de Faithfulness permite analizar si las respuestas están respaldadas por el contexto recuperado.
 - El mecanismo de fallback evita responder cuando el contexto no contiene información suficiente.
 
-En las pruebas realizadas no se ha demostrado una mejora general de la calidad de las respuestas con BGE. En la primera pregunta, el RAG original obtuvo mejor Faithfulness; en la segunda, ambas versiones activaron el fallback.
+Las tres evaluaciones realizadas muestran resultados diferentes:
 
-Por tanto, la principal aportación del proyecto es la implementación y evaluación comparativa de una estrategia de reranking, así como la identificación de sus ventajas y limitaciones.
+- En la primera pregunta, sobre la garantía de lunas de GesAuto, el RAG original obtuvo una puntuación superior a BGE.
+- En la segunda pregunta, sobre la rotura de lunas de Línea Directa, ambos sistemas activaron el fallback y obtuvieron 0,00.
+- En la tercera pregunta, sobre los gastos de remolcaje, ambos sistemas recuperaron la información correcta y obtuvieron 1,00.
+
+Por tanto, no se ha demostrado una mejora general de Faithfulness con BGE. La utilidad del reranker depende de la consulta y de la calidad de la recuperación inicial.
+
+La principal aportación del proyecto es la implementación y evaluación comparativa de una estrategia de reranking, así como la identificación de sus ventajas y limitaciones en un sistema RAG aplicado al ámbito asegurador.
 
 ### 12. Seguridad y consideraciones finales
 
 - No publicar el archivo `.env` ni credenciales de conexión.
 - No subir el entorno virtual `.venv`.
-- No incluir documentos PDF ni archivos ajenos a la entrega si no son necesarios.
 - Mantener el aislamiento por `tenant_id` en todas las consultas.
 - No ejecutar procesos de indexación o reconstrucción de tablas sobre la base de datos de producción o demostración sin necesidad.
 - No interpretar las puntuaciones de BGE como probabilidades.
 - No considerar las métricas automáticas de RAGAS como una evaluación humana definitiva.
+- Mantener en `docs/` los tres documentos PDF utilizados en el proyecto, que forman parte de la documentación de la entrega.
+- No incluir documentos personales, archivos ajenos al proyecto ni documentación para la que no se disponga de autorización de uso o distribución.
 
 **Conclusión:** el Proyecto 11 amplía el RAG del Proyecto 10 con un reranker BGE y una evaluación mediante RAGAS, permitiendo analizar de forma práctica cómo cambia la recuperación de información y qué limitaciones permanecen en un sistema RAG aplicado al ámbito asegurador.

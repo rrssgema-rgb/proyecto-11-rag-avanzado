@@ -1,5 +1,4 @@
-﻿
-"""Recuperacion y generacion de respuestas para el RAG de seguros de automovil."""
+﻿"""Recuperacion y generacion de respuestas para el RAG de seguros de automovil."""
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama import ChatOllama
@@ -11,6 +10,10 @@ from db import conectar, embedding
 NOMBRE_TABLA = "fragmentos_rag10"
 TENANT_ID = "seguros_auto_demo"
 
+DOCUMENTOS_LINEA_DIRECTA = [
+    "linea_directa_condiciones_generales.pdf",
+    "linea_directa_coberturas_complementarias.pdf",
+]
 
 # Modelo local para reformular preguntas y generar respuestas.
 llm = ChatOllama(model="llama3.1:8b", temperature=0)
@@ -20,13 +23,24 @@ def recuperar(
     pregunta: str,
     k: int = 4,
     tenant_id: str = TENANT_ID,
+    documentos: list[str] | None = None,
 ):
-    """Combina busqueda textual y vectorial dentro del tenant indicado."""
+    """Combina busqueda textual y vectorial dentro del tenant indicado.
+
+    Si se proporciona documentos, limita la recuperacion a esos archivos.
+    """
     q = Vector(embedding([pregunta])[0])
 
     conn = conectar()
 
     try:
+        filtro_documentos = ""
+        parametros_documentos = []
+
+        if documentos:
+            filtro_documentos = " AND documento = ANY(%s)"
+            parametros_documentos = [documentos]
+
         # 1. Busqueda vectorial.
         filas_vector = conn.execute(
             f"""
@@ -34,10 +48,15 @@ def recuperar(
                    embedding <=> %s AS distancia
             FROM {NOMBRE_TABLA}
             WHERE tenant_id = %s
+            {filtro_documentos}
             ORDER BY embedding <=> %s
             LIMIT %s
             """,
-            (q, tenant_id, q, k),
+            (
+                [q, tenant_id]
+                + parametros_documentos
+                + [q, k]
+            ),
         ).fetchall()
 
         # 2. Busqueda textual complementaria.
@@ -73,19 +92,21 @@ def recuperar(
                        embedding <=> %s AS distancia
                 FROM {NOMBRE_TABLA}
                 WHERE tenant_id = %s
+                  {filtro_documentos}
                   AND ({condiciones})
                 ORDER BY embedding <=> %s
                 LIMIT %s
                 """,
                 (
                     [q, tenant_id]
+                    + parametros_documentos
                     + [f"%{palabra}%" for palabra in palabras]
                     + [q, k]
                 ),
             ).fetchall()
 
-        # 3. Prioriza las coincidencias textuales y completa
-        # con los resultados vectoriales, sin duplicados.
+        # 3. Prioriza coincidencias textuales y completa
+        # con resultados vectoriales, sin duplicados.
         resultados = {}
 
         for fila in filas_texto + filas_vector:
@@ -234,7 +255,6 @@ def reformular_pregunta(mensajes) -> str:
 
     reformulada = resultado.content.strip()
 
-    # Evita devolver una pregunta vacia si el modelo falla.
     return reformulada or ultima
 
 
