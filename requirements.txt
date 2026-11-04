@@ -1,0 +1,13 @@
+@'
+langchain-community
+langchain-core
+langchain-text-splitters
+langchain-ollama
+langgraph
+pypdf
+psycopg[binary]
+pgvector
+python-dotenv
+sentence-transformers==6.2.0
+ragas==0.4.3
+'@ | Set-Content .\requirements.txt -Encoding UTF8
